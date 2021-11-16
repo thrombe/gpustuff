@@ -6,6 +6,7 @@ use winit::{
     event_loop::{ControlFlow, EventLoop},
     window::{WindowBuilder, Window},
 };
+use std::sync::mpsc::channel;
 
 struct State {
     surface: wgpu::Surface,
@@ -13,13 +14,16 @@ struct State {
     queue: wgpu::Queue,
     config: wgpu::SurfaceConfiguration,
     size: winit::dpi::PhysicalSize<u32>,
-    render_pipeline: wgpu::RenderPipeline,
+    render_pipeline: Option<wgpu::RenderPipeline>,
     vertex_buffer: wgpu::Buffer,
     num_vertices: u32,
 
     stuff: Stuff,
     stuff_buffer: wgpu::Buffer,
+    stuff_bind_group_layout: wgpu::BindGroupLayout,
     stuff_bind_group: wgpu::BindGroup,
+
+    shader_code: Option<String>,
 }
 
 impl State {
@@ -89,18 +93,75 @@ impl State {
             ],
         });
 
-        let shader = device.create_shader_module(&wgpu::ShaderModuleDescriptor {
-            label: Some("Shader"),
-            source: wgpu::ShaderSource::Wgsl(include_str!("shader.wgsl").into()),
+        let vertex_buffer = device.create_buffer_init(
+            &wgpu::util::BufferInitDescriptor {
+                label: Some("Vertex Buffer"),
+                contents: bytemuck::cast_slice(VERTICES),
+                usage: wgpu::BufferUsages::VERTEX
+            }
+        );
+        let num_vertices = VERTICES.len() as u32;
+        let mut state = Self { 
+            surface, device, queue, config, size, render_pipeline: None, 
+            vertex_buffer, num_vertices, 
+            stuff, stuff_buffer, stuff_bind_group_layout, stuff_bind_group,
+            shader_code: None
+        };
+        state.recompile();
+        state
+    }
+
+    fn resize(&mut self, new_size: winit::dpi::PhysicalSize<u32>) {
+        if new_size.width > 0 && new_size.height > 0 {
+            self.size = new_size;
+            self.config.width = new_size.width;
+            self.config.height = new_size.height;
+            self.surface.configure(&self.device, &self.config);
+
+            self.stuff.width = self.size.width as f32;
+            self.stuff.height = self.size.height as f32;    
+        }
+    }
+
+    fn input(&mut self, _event: &WindowEvent) -> bool {
+        false
+    }
+
+    fn update(&mut self) {
+        self.stuff.time += 0.005;
+        self.stuff.time = self.stuff.time.fract();
+
+        self.queue.write_buffer(&self.stuff_buffer, 0, bytemuck::cast_slice(&[self.stuff]));
+        self.recompile();
+    }
+
+    fn recompile(&mut self) {
+        let shader_code = std::fs::read_to_string("/home/issac/0Git/gpustuff/src/shader.wgsl").unwrap();
+        if let Some(code) = &self.shader_code {
+            if code == &shader_code {
+                self.shader_code = Some(shader_code);
+                return;
+            }
+        }
+        self.shader_code = Some(shader_code);
+
+        let (tx, rx) = channel::<wgpu::Error>();
+        self.device.on_uncaptured_error(move |e: wgpu::Error| {
+            tx.send(e).expect("sending error failed");
         });
-        let render_pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+        let shader = self.device.create_shader_module(&wgpu::ShaderModuleDescriptor {
+            label: Some("Shader"),
+            // source: wgpu::ShaderSource::Wgsl(include_str!("shader.wgsl").into()),
+            source: wgpu::ShaderSource::Wgsl(std::borrow::Cow::Borrowed(&self.shader_code.as_ref().unwrap())),
+        });
+        let render_pipeline_layout = self.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("Render Pipeline Layout"),
             bind_group_layouts: &[
-                &stuff_bind_group_layout,
+                &self.stuff_bind_group_layout,
             ],
             push_constant_ranges: &[],
         });
-        let render_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+        let render_pipeline = self.device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
             label: Some("Render Pipeline"),
             layout: Some(&render_pipeline_layout),
             vertex: wgpu::VertexState {
@@ -112,7 +173,7 @@ impl State {
                 module: &shader,
                 entry_point: "main",
                 targets: &[wgpu::ColorTargetState { // 4.
-                    format: config.format,
+                    format: self.config.format,
                     blend: Some(wgpu::BlendState::REPLACE),
                     write_mask: wgpu::ColorWrites::ALL,
                 }],
@@ -136,33 +197,14 @@ impl State {
                 alpha_to_coverage_enabled: false, // 4.
             },
         });
-        let vertex_buffer = device.create_buffer_init(
-            &wgpu::util::BufferInitDescriptor {
-                label: Some("Vertex Buffer"),
-                contents: bytemuck::cast_slice(VERTICES),
-                usage: wgpu::BufferUsages::VERTEX
-            }
-        );
-        let num_vertices = VERTICES.len() as u32;
-        Self { surface, device, queue, config, size, render_pipeline, vertex_buffer, num_vertices, stuff, stuff_buffer, stuff_bind_group }
-    }
 
-    fn resize(&mut self, new_size: winit::dpi::PhysicalSize<u32>) {
-        if new_size.width > 0 && new_size.height > 0 {
-            self.size = new_size;
-            self.config.width = new_size.width;
-            self.config.height = new_size.height;
-            self.surface.configure(&self.device, &self.config);
+        if let Ok(err) = rx.try_recv() {
+            dbg!(err);
+            // self.render_pipeline = None; // enter a default blank render pipline for failures
+            return;
         }
-    }
-
-    fn input(&mut self, _event: &WindowEvent) -> bool {
-        false
-    }
-
-    fn update(&mut self) {
-        self.stuff.time += 0.09 - self.stuff.time.floor();
-        self.queue.write_buffer(&self.stuff_buffer, 0, bytemuck::cast_slice(&[self.stuff]));
+        dbg!("shader compiled");
+        self.render_pipeline = Some(render_pipeline);
     }
 
     fn render(&mut self) -> Result<(), wgpu::SurfaceError> {
@@ -190,7 +232,7 @@ impl State {
                 depth_stencil_attachment: None,
             });
 
-            render_pass.set_pipeline(&self.render_pipeline);
+            render_pass.set_pipeline(self.render_pipeline.as_ref().unwrap());
             render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
             render_pass.set_bind_group(0, &self.stuff_bind_group, &[]);
             render_pass.draw(0..self.num_vertices, 0..1);
@@ -296,8 +338,8 @@ const VERTICES: &[Vertex] = &[
 #[derive(Clone, Copy, Debug, bytemuck::Pod, bytemuck::Zeroable)]
 
 struct Stuff {
-    width: u32,
-    height: u32,
+    width: f32,
+    height: f32,
     time: f32,
     something: f32,
 }
@@ -305,8 +347,8 @@ struct Stuff {
 impl Stuff {
     fn new() -> Self {
         Self {
-            width: 1080,
-            height: 720,
+            width: 100.0,
+            height: 100.0,
             time: 0.0,
             something: 99.0
         }
