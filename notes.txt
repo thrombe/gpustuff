@@ -1,0 +1,8 @@
+
+plan:
+  . show red/white screen if shader dont compile
+  . dont crash if shader dont compile initially
+  . send mouse coords in shader so that it can be used for fun things
+    . like things interacting with mouse
+    . using it as sliders for variables
+  . how anti-aliasing

@@ -129,7 +129,7 @@ impl State {
 
     fn update(&mut self) {
         self.stuff.time += 0.005;
-        self.stuff.time = self.stuff.time.fract();
+        // self.stuff.time = self.stuff.time.fract();
 
         self.queue.write_buffer(&self.stuff_buffer, 0, bytemuck::cast_slice(&[self.stuff]));
         self.recompile();
