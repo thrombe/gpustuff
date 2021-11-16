@@ -1,41 +1,61 @@
+
+
+// Vertex shader
+
+// struct VertexOutput {
+//     [[builtin(position)]] clip_position: vec4<f32>;
+// };
+
+// [[stage(vertex)]]
+// fn main( [[builtin(vertex_index)]] in_vertex_index: u32 ) -> VertexOutput {
+//     var out: VertexOutput;
+//     let x = f32(1 - i32(in_vertex_index)) * 0.5;
+//     let y = f32(i32(in_vertex_index & 1u) * 2 - 1) * 0.5;
+//     out.clip_position = vec4<f32>(x, y, 0.0, 1.0);
+//     return out;
+// }
+
+// Fragment shader
+
 [[block]]
-struct PrimeIndices {
-    data: [[stride(4)]] array<u32>;
-}; // this is used as both input and output for convenience
-
+struct Stuff {
+    time: f32;
+    vare: f32;
+};
 [[group(0), binding(0)]]
-var<storage, read_write> v_indices: PrimeIndices;
+var<uniform> stuff: Stuff;
 
-// The Collatz Conjecture states that for any integer n:
-// If n is even, n = n/2
-// If n is odd, n = 3n+1
-// And repeat this process for each new n, you will always eventually reach 1.
-// Though the conjecture has not been proven, no counterexample has ever been found.
-// This function returns how many times this recurrence needs to be applied to reach 1.
-fn collatz_iterations(n_base: u32) -> u32{
-    var n: u32 = n_base;
-    var i: u32 = 0u;
-    loop {
-        if (n <= 1u) {
-            break;
-        }
-        if (n % 2u == 0u) {
-            n = n / 2u;
-        }
-        else {
-            // Overflow? (i.e. 3*n + 1 > 0xffffffffu?)
-            if (n >= 1431655765u) {   // 0x55555555u
-                return 4294967295u;   // 0xffffffffu
-            }
+// [[stage(fragment)]]
+// fn main(in: VertexOutput) -> [[location(0)]] vec4<f32> {
+//     return vec4<f32>(stuff.time, in.clip_position[0], in.clip_position[1], 1.0);
+// }
 
-            n = 3u * n + 1u;
-        }
-        i = i + 1u;
-    }
-    return i;
+
+
+
+// Vertex shader
+
+struct VertexInput {
+    [[location(0)]] position: vec3<f32>;
+    [[location(1)]] color: vec3<f32>;
+};
+
+struct VertexOutput {
+    [[builtin(position)]] clip_position: vec4<f32>;
+    [[location(0)]] color: vec3<f32>;
+};
+
+[[stage(vertex)]]
+fn main(model: VertexInput) -> VertexOutput {
+    var out: VertexOutput;
+    out.color = model.color;
+    out.clip_position = vec4<f32>(model.position, 1.0);
+    return out;
 }
 
-[[stage(compute), workgroup_size(1)]]
-fn main([[builtin(global_invocation_id)]] global_id: vec3<u32>) {
-    v_indices.data[global_id.x] = collatz_iterations(v_indices.data[global_id.x]);
+// Fragment shader
+
+[[stage(fragment)]]
+fn main(in: VertexOutput) -> [[location(0)]] vec4<f32> {
+    return vec4<f32>(in.clip_position);
 }
