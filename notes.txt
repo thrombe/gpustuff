@@ -6,6 +6,11 @@ plan:
     . like things interacting with mouse
     . using it as sliders for variables
   . how anti-aliasing
+  . /// import ./filepath // comment
+    /. go through each line checking if it has "////"
+    /. replace the line with whatever is in the file
+      /. do import recursively
+    . keep track of what files included and dont import files multiple times
   . how do i check fps?
   . can i dump gifs and pics?
   . press button to pause time

@@ -1,4 +1,6 @@
 
+/// import ./src/lol_shader.wgsl // dumb comment
+
 [[block]]
 struct Stuff {
     width: f32;

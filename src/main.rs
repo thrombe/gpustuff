@@ -1,5 +1,7 @@
 #![allow(dead_code)]
 
+mod custom_shader_macros;
+
 use wgpu::util::{DeviceExt};
 use winit::{
     event::{Event, WindowEvent, KeyboardInput, ElementState, VirtualKeyCode},
@@ -143,7 +145,7 @@ impl State {
     }
 
     fn compile(&mut self) {
-        let shader_code = std::fs::read_to_string("./src/shader.wgsl").unwrap();
+        let shader_code = custom_shader_macros::import_to_string("./src/shader.wgsl");
         if let Some(code) = &self.shader_code {
             if code == &shader_code {
                 self.shader_code = Some(shader_code);
