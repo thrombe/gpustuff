@@ -6,3 +6,20 @@ plan:
     . like things interacting with mouse
     . using it as sliders for variables
   . how anti-aliasing
+  . how do i check fps?
+  . can i dump gifs and pics?
+  . press button to pause time
+  . cursor
+    /. dot seems to lag quite a bit behind cursor
+    /. maybe cuz its fifo + alotta frames
+      /. fixed with changing fifo to immediate
+
+plot:
+  . 
+
+particle life:
+  . how do i represent this efficiently
+    . 
+
+buddhabrot live-ish?:
+  , 

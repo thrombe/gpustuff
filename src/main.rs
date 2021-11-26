@@ -55,7 +55,7 @@ impl State {
             format: surface.get_preferred_format(&adapter).unwrap(),
             width: size.width,
             height: size.height,
-            present_mode: wgpu::PresentMode::Fifo,
+            present_mode: wgpu::PresentMode::Immediate,
         };
         surface.configure(&device, &config);
 
@@ -107,7 +107,7 @@ impl State {
             stuff, stuff_buffer, stuff_bind_group_layout, stuff_bind_group,
             shader_code: None
         };
-        state.recompile();
+        state.compile();
         state
     }
 
@@ -123,8 +123,15 @@ impl State {
         }
     }
 
-    fn input(&mut self, _event: &WindowEvent) -> bool {
-        false
+    fn input(&mut self, event: &WindowEvent) -> bool {
+        match event {
+            WindowEvent::CursorMoved { position, .. } => {
+                self.stuff.cursor_x = position.x as f32;
+                self.stuff.cursor_y = position.y as f32;
+            }
+            _ => return false,
+        };
+        true
     }
 
     fn update(&mut self) {
@@ -132,11 +139,11 @@ impl State {
         // self.stuff.time = self.stuff.time.fract();
 
         self.queue.write_buffer(&self.stuff_buffer, 0, bytemuck::cast_slice(&[self.stuff]));
-        self.recompile();
+        self.compile();
     }
 
-    fn recompile(&mut self) {
-        let shader_code = std::fs::read_to_string("/home/issac/0Git/gpustuff/src/shader.wgsl").unwrap();
+    fn compile(&mut self) {
+        let shader_code = std::fs::read_to_string("./src/shader.wgsl").unwrap();
         if let Some(code) = &self.shader_code {
             if code == &shader_code {
                 self.shader_code = Some(shader_code);
@@ -199,8 +206,8 @@ impl State {
         });
 
         if let Ok(err) = rx.try_recv() {
-            dbg!(err);
-            // self.render_pipeline = None; // enter a default blank render pipline for failures
+            println!("{}", err);
+            // TODO: self.render_pipeline = None; // enter a default blank render pipline for failures
             return;
         }
         dbg!("shader compiled");
@@ -341,6 +348,8 @@ struct Stuff {
     width: f32,
     height: f32,
     time: f32,
+    cursor_x: f32,
+    cursor_y: f32,
     something: f32,
 }
 
@@ -350,6 +359,8 @@ impl Stuff {
             width: 100.0,
             height: 100.0,
             time: 0.0,
+            cursor_x: 0.0,
+            cursor_y: 0.0,
             something: 99.0
         }
     }
