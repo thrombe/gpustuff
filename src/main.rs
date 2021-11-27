@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 
-mod custom_shader_macros;
+mod shader_importer;
 
 use wgpu::util::{DeviceExt};
 use winit::{
@@ -25,7 +25,7 @@ struct State {
     stuff_bind_group_layout: wgpu::BindGroupLayout,
     stuff_bind_group: wgpu::BindGroup,
 
-    importer: custom_shader_macros::Importer,
+    importer: shader_importer::Importer,
 }
 
 impl State {
@@ -107,7 +107,7 @@ impl State {
             surface, device, queue, config, size, render_pipeline: None, 
             vertex_buffer, num_vertices, 
             stuff, stuff_buffer, stuff_bind_group_layout, stuff_bind_group,
-            importer: custom_shader_macros::Importer::new("./src/shader.wgsl"),
+            importer: shader_importer::Importer::new("./src/shader.wgsl"),
         };
         state.compile();
         state
