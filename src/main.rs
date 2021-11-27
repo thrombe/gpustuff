@@ -25,7 +25,7 @@ struct State {
     stuff_bind_group_layout: wgpu::BindGroupLayout,
     stuff_bind_group: wgpu::BindGroup,
 
-    shader_code: Option<String>,
+    importer: custom_shader_macros::Importer,
 }
 
 impl State {
@@ -107,7 +107,7 @@ impl State {
             surface, device, queue, config, size, render_pipeline: None, 
             vertex_buffer, num_vertices, 
             stuff, stuff_buffer, stuff_bind_group_layout, stuff_bind_group,
-            shader_code: None
+            importer: custom_shader_macros::Importer::new("./src/shader.wgsl"),
         };
         state.compile();
         state
@@ -145,14 +145,8 @@ impl State {
     }
 
     fn compile(&mut self) {
-        let shader_code = custom_shader_macros::import_to_string("./src/shader.wgsl");
-        if let Some(code) = &self.shader_code {
-            if code == &shader_code {
-                self.shader_code = Some(shader_code);
-                return;
-            }
-        }
-        self.shader_code = Some(shader_code);
+        let shader_code = self.importer.check_and_import();
+        if shader_code.is_none() {return}
 
         let (tx, rx) = channel::<wgpu::Error>();
         self.device.on_uncaptured_error(move |e: wgpu::Error| {
@@ -160,8 +154,7 @@ impl State {
         });
         let shader = self.device.create_shader_module(&wgpu::ShaderModuleDescriptor {
             label: Some("Shader"),
-            // source: wgpu::ShaderSource::Wgsl(include_str!("shader.wgsl").into()),
-            source: wgpu::ShaderSource::Wgsl(std::borrow::Cow::Borrowed(&self.shader_code.as_ref().unwrap())),
+            source: wgpu::ShaderSource::Wgsl(std::borrow::Cow::Borrowed(shader_code.as_ref().unwrap())),
         });
         let render_pipeline_layout = self.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("Render Pipeline Layout"),
