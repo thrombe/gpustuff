@@ -26,6 +26,8 @@ struct State {
     stuff_bind_group: wgpu::BindGroup,
 
     importer: shader_importer::Importer,
+    compile_status: bool,
+    shader_code: Option<String>,
 }
 
 impl State {
@@ -108,9 +110,24 @@ impl State {
             vertex_buffer, num_vertices, 
             stuff, stuff_buffer, stuff_bind_group_layout, stuff_bind_group,
             importer: shader_importer::Importer::new("./src/shader.wgsl"),
+            compile_status: false,
+            shader_code: None,
         };
         state.compile();
         state
+    }
+
+    fn default_shader() -> String {
+        String::from("
+            [[stage(vertex)]]
+            fn main() -> [[builtin(position)]] vec4<f32> {
+                return vec4<f32>(1.0);
+            }
+            [[stage(fragment)]]
+            fn main([[builtin(position)]] pos: vec4<f32>) -> [[location(0)]] vec4<f32> {
+                return vec4<f32>(1.0);
+            }
+        ")
     }
 
     fn resize(&mut self, new_size: winit::dpi::PhysicalSize<u32>) {
@@ -145,8 +162,18 @@ impl State {
     }
 
     fn compile(&mut self) {
-        let shader_code = self.importer.check_and_import();
+        let shader_code = {
+            if self.shader_code.is_none() {
+                Some(State::default_shader())
+            } else if self.compile_status {
+                self.importer.check_and_import()
+            } else {
+                self.importer.import()
+            }
+        };
         if shader_code.is_none() {return}
+        if !self.compile_status && self.shader_code == shader_code {return}
+        self.shader_code = shader_code;
 
         let (tx, rx) = channel::<wgpu::Error>();
         self.device.on_uncaptured_error(move |e: wgpu::Error| {
@@ -154,7 +181,7 @@ impl State {
         });
         let shader = self.device.create_shader_module(&wgpu::ShaderModuleDescriptor {
             label: Some("Shader"),
-            source: wgpu::ShaderSource::Wgsl(std::borrow::Cow::Borrowed(shader_code.as_ref().unwrap())),
+            source: wgpu::ShaderSource::Wgsl(std::borrow::Cow::Borrowed(self.shader_code.as_ref().unwrap())),
         });
         let render_pipeline_layout = self.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("Render Pipeline Layout"),
@@ -201,11 +228,12 @@ impl State {
         });
 
         if let Ok(err) = rx.try_recv() {
+            self.compile_status = false;
             println!("{}", err);
-            // TODO: self.render_pipeline = None; // enter a default blank render pipline for failures
             return;
         }
         dbg!("shader compiled");
+        self.compile_status = true;
         self.render_pipeline = Some(render_pipeline);
     }
 
@@ -345,7 +373,6 @@ struct Stuff {
     time: f32,
     cursor_x: f32,
     cursor_y: f32,
-    something: f32,
 }
 
 impl Stuff {
@@ -356,7 +383,6 @@ impl Stuff {
             time: 0.0,
             cursor_x: 0.0,
             cursor_y: 0.0,
-            something: 99.0
         }
     }
 }

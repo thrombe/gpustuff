@@ -36,7 +36,7 @@ impl Importer {
         let rez = self.update_metadata(&modified).is_none(); // bad file name or something
         self.all_imports.insert(modified, mod_time);
         if rez {return None}
-        Some(self.import())
+        self.import()
     }
 
     // update/add all the files imported in this file
@@ -51,7 +51,7 @@ impl Importer {
                 continue;
             }
             let words = line.split_whitespace().collect::<Vec<&str>>();
-            match words[1] {
+            match *words.get(1).unwrap_or(&"") {
                 "import" => {
                     let path = words[2];
                     if !self.all_imports.contains_key(path) {                        
@@ -72,15 +72,14 @@ impl Importer {
         Some(())
     }
 
-    fn import(&self) -> String {
-        import_to_string(&self.main_path)       
+    pub fn import(&self) -> Option<String> {
+        Some(import_to_string(&self.main_path))
     }
 }
 
 pub fn import_to_string(path: &str) -> String {
     let mut shader = "".to_string();
     let main_mod = std::fs::read_to_string(path).unwrap();
-    if main_mod == "" {return import_to_string(path)} // for some reason the above line can return "" without panic on unwrap -> maybe cuz vscode is saving too?
     for line in main_mod.lines() {
         if !line.starts_with("/// ") {
             shader.push_str(line);
@@ -88,8 +87,8 @@ pub fn import_to_string(path: &str) -> String {
             continue;
         }
         let words = line.split_whitespace().collect::<Vec<&str>>();
-        match words[1] {
-            "import" => {
+        match *words.get(1).unwrap_or(&"") {
+            "import" => { // importing code from other shaders as if it was written in the same file
                 let sub_mod = import_to_string(words[2]);
                 shader.push_str(&sub_mod);
                 shader.push_str("\n");

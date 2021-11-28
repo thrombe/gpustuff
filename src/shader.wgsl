@@ -1,5 +1,4 @@
 
-/// import ./src/lol_shader.wgsl // dumb comment
 
 [[block]]
 struct Stuff {
@@ -8,7 +7,6 @@ struct Stuff {
     time: f32;
     cursor_x: f32;
     cursor_y: f32;
-    something: f32;
 };
 [[group(0), binding(0)]]
 var<uniform> stuff: Stuff;
@@ -98,6 +96,32 @@ fn regular_polygon(x: f32, y: f32) -> vec3<f32> {
 fn dot_at_mouse_position(x: f32, y: f32, cx: f32, cy: f32) -> vec3<f32> {
     return v3f(length(v2f(x-cx, y-cy)));
 }
+fn mandlebrot(x: f32, y: f32, curx: f32, cury: f32) -> v3f {
+    var x = x*0.2;
+    let curx = curx*0.2;
+    let cury = cury*0.2;
+    var y = y*0.2;
+    let cx = x;
+    let cy = y;
+
+    var iter = 0.0;
+    for (var i=0; i<500; i = i+1) {
+        let ex = x;
+        x = x*x-y*y + cx;
+        y = 2.0*ex*y + cy;
+        if (x*x+y*y > 4.0) {
+            iter = f32(i);
+            break;
+        }
+    }
+
+    var col = v3f(iter/100.0)*1.0;
+    // col = col + 1.0-clamp(4.0*dot_at_mouse_position(cx, cy, curx, cury), v3f(0.0), v3f(1.0));
+    col = col*2.0 + 1.0 - 4.0*dot_at_mouse_position(cx, cy, curx, cury);
+
+    // return v3f(length(v3f(x, y, 0.0)));
+    return col;
+}
 
 
 [[stage(fragment)]]
@@ -120,8 +144,7 @@ fn main([[builtin(position)]] pos: vec4<f32>) -> [[location(0)]] vec4<f32> {
     var curs = v2f(stuff.cursor_x/stuff.width, 1.0-stuff.cursor_y/stuff.height) - v2f(0.5) + offset;
     curs = v2f(curs.x*stuff.width/side, curs.y*stuff.height/side)*scale;
 
-    // let col = plotquations(pos.x, pos.y);
-    let col = dot_at_mouse_position(pos.x, pos.y, curs.x, curs.y);
+    var col = mandlebrot(pos.x, pos.y, curs.x, curs.y);
     return vec4<f32>(sign(col)*col*col, 1.0); // gamma correction ruines stuff
     // return vec4<f32>(stuff.time, 0.33, 0.33, 1.0);
 }

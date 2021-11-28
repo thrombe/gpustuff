@@ -21,6 +21,12 @@ plan:
     /. maybe cuz its fifo + alotta frames
       /. fixed with changing fifo to immediate
 
+gol:
+  . figure out how to retain last frame
+  . for each pixel, it looks around it by offsets of the cell side to decide if the color should be b or w
+  . this way, performance will only depend on the cell count and nothing else
+  . no cpu needed/no buffers needed to store the cell/cell info
+
 plot:
   . 
 
