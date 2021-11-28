@@ -28,6 +28,8 @@ struct State {
     importer: shader_importer::Importer,
     compile_status: bool,
     shader_code: Option<String>,
+
+    time: std::time::Instant,
 }
 
 impl State {
@@ -112,12 +114,13 @@ impl State {
             importer: shader_importer::Importer::new("./src/shader.wgsl"),
             compile_status: false,
             shader_code: None,
+            time: std::time::Instant::now(),
         };
         state.compile();
         state
     }
 
-    fn default_shader() -> String {
+    fn fallback_shader() -> String {
         String::from("
             [[stage(vertex)]]
             fn main() -> [[builtin(position)]] vec4<f32> {
@@ -154,8 +157,7 @@ impl State {
     }
 
     fn update(&mut self) {
-        self.stuff.time += 0.005;
-        // self.stuff.time = self.stuff.time.fract();
+        self.stuff.time += self.time.elapsed().as_secs_f32();
 
         self.queue.write_buffer(&self.stuff_buffer, 0, bytemuck::cast_slice(&[self.stuff]));
         self.compile();
@@ -164,7 +166,7 @@ impl State {
     fn compile(&mut self) {
         let shader_code = {
             if self.shader_code.is_none() {
-                Some(State::default_shader())
+                Some(Self::fallback_shader())
             } else if self.compile_status {
                 self.importer.check_and_import()
             } else {

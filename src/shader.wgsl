@@ -37,7 +37,7 @@ fn hsb2rgb(hsb: vec3<f32>) -> vec3<f32> {
 
 
 fn plotquations(x: f32, y: f32) -> vec3<f32> {
-    var time = stuff.time *1.0;
+    var time = stuff.time *0.000001;
     // time = sin(time);
 
     // var f = cos(x*x+y*y + time) - x*y/4.0;
@@ -78,7 +78,7 @@ fn circle(x: f32, y: f32) -> vec3<f32> {
 fn polar_function(x: f32, y: f32) -> vec3<f32> {
     var l = length(v2f(x, y));
     var theta = atan2(y, x);
-    var r = 2.0 + 4.0*sin(sin(stuff.time)*20.0*theta + stuff.time*10.0);
+    var r = 2.0 + 4.0*sin(sin(stuff.time*0.0000005)*20.0*theta + stuff.time*0.00001);
     var f = smoothStep(0.0, 0.3, -l+r);
     return v3f(f);
 }
@@ -86,11 +86,11 @@ fn regular_polygon(x: f32, y: f32) -> vec3<f32> {
     var l = length(v2f(x, y));
     var theta = atan2(y, x);
     var sides = 5.0;
-    sides = sin(stuff.time)*10.0;
+    sides = sin(stuff.time*0.0000005)*10.0;
     var a = 2.0*PI/sides;
     var f = cos(floor(0.5 + theta/a)*a - theta)*l;
     f = f*0.1;
-    f = smoothStep(0.4, 0.43, f);
+    f = smoothStep(0.4, 0.406, f);
     return v3f(f);
 }
 fn dot_at_mouse_position(x: f32, y: f32, cx: f32, cy: f32) -> vec3<f32> {

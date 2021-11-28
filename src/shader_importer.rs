@@ -41,6 +41,7 @@ impl Importer {
 
     // update/add all the files imported in this file
     // if already there, update the mod time
+    // TODO: merge this with import so that files dont have to be read twice
     fn update_metadata(&mut self, path: &str) -> Option<()> {
         let main_mod = match std::fs::read_to_string(path) {
             Ok(s) => s,
