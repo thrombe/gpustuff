@@ -1,4 +1,16 @@
 
+resources:
+  . https://www.khronos.org/opengl/wiki/Compute_Shader
+  . https://www.w3.org/TR/WGSL/
+
+custom commands:
+  . /// import ./shader_path
+    . keep track of what files included and dont import files multiple times
+  . /// compute_enabled
+    . dont do compute pass if this isnt found
+  . /// work_group_count 64
+
+
 plan:
   . show red/white screen if shader dont compile
   . dont crash if shader dont compile initially
@@ -6,11 +18,6 @@ plan:
     . like things interacting with mouse
     . using it as sliders for variables
   . how anti-aliasing
-  . /// import ./filepath // comment
-    /. go through each line checking if it has "////"
-    /. replace the line with whatever is in the file
-      /. do import recursively
-    . keep track of what files included and dont import files multiple times
   . how do i check fps?
   . can i dump gifs and pics?
   . press button to pause time

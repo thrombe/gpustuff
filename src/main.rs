@@ -11,6 +11,8 @@ use winit::{
 use std::sync::mpsc::channel;
 
 const SIZEE: u64 = 1080*1920;
+const WORK_GROUP_SIZE: u64 = 64;
+
 struct State {
     surface: wgpu::Surface,
     device: wgpu::Device,
@@ -134,10 +136,10 @@ impl State {
         let num_vertices = VERTICES.len() as u32;
 
         let mut state = Self { 
-            surface, device, queue, config, size, render_pipeline: None, compute_pipeline: None, work_group_count: 200,
+            surface, device, queue, config, size, render_pipeline: None, compute_pipeline: None, work_group_count: (SIZEE as f64/WORK_GROUP_SIZE as f64).ceil() as u32,
             vertex_buffer, num_vertices, 
             stuff, stuff_buffer, compute_buffer, bind_group_layouts, bind_group,
-            importer: shader_importer::Importer::new("./src/shader.wgsl"),
+            importer: shader_importer::Importer::new("./src/main.wgsl"),
             compile_status: false,
             shader_code: None,
             time: std::time::Instant::now(),
@@ -336,7 +338,7 @@ impl State {
             let mut compute_pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor { label: None });
             compute_pass.set_pipeline(self.compute_pipeline.as_ref().unwrap());
             compute_pass.set_bind_group(0, &self.bind_group, &[]);
-            compute_pass.dispatch(self.work_group_count, 1, 1);
+            compute_pass.dispatch(self.work_group_count, 1, 1); // opengl minimum requirements are (65535, 65535, 65535)
         }
 
         {

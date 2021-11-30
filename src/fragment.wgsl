@@ -1,28 +1,4 @@
 
-
-[[block]]
-struct Stuff {
-    width: f32;
-    height: f32;
-    time: f32;
-    cursor_x: f32;
-    cursor_y: f32;
-
-    scroll: f32;
-    mouse_left: u32;
-    mouse_right: u32;
-    mouse_middle: u32;
-};
-[[group(0), binding(0)]]
-var<uniform> stuff: Stuff;
-
-let PI = 3.14159265359;
-type v2f = vec2<f32>;
-type v3f = vec3<f32>;
-type v4f = vec4<f32>;
-
-/// import ./src/compute.wgsl
-
 fn rgb2hsb(rgb: vec3<f32>) -> vec3<f32> {
     let k = vec4<f32>(0.0, -1.0/3.0, 2.0/3.0, -1.0);
     let p = mix(vec4<f32>(rgb.bg, k.wz), vec4<f32>(rgb.gb, k.xy), step(rgb.b, rgb.g));
@@ -151,17 +127,7 @@ fn main([[builtin(position)]] pos: vec4<f32>) -> [[location(0)]] vec4<f32> {
     var curs = v2f(stuff.cursor_x/stuff.width, 1.0-stuff.cursor_y/stuff.height) - v2f(0.5) + offset;
     curs = v2f(curs.x*stuff.width/side, curs.y*stuff.height/side)*scale;
 
-    // var col = mandlebrot(pos.x, pos.y, curs.x, curs.y);
-    var col = compute_buffer.buff[u32(pos.x + pos.y*1080.0)];
-    var col = v3f(f32(col));
+    var col = mandlebrot(pos.x, pos.y, curs.x, curs.y);
     return vec4<f32>(sign(col)*col*col, 1.0); // gamma correction ruines stuff
     // return vec4<f32>(stuff.time, 0.33, 0.33, 1.0);
-}
-
-
-
-
-[[stage(vertex)]]
-fn main([[location(0)]] position: vec3<f32>) -> [[builtin(position)]] vec4<f32> {
-    return vec4<f32>(position, 1.0);
 }
