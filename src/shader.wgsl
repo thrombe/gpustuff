@@ -16,11 +16,12 @@ struct Stuff {
 [[group(0), binding(0)]]
 var<uniform> stuff: Stuff;
 
-
 let PI = 3.14159265359;
 type v2f = vec2<f32>;
 type v3f = vec3<f32>;
 type v4f = vec4<f32>;
+
+/// import ./src/compute.wgsl
 
 fn rgb2hsb(rgb: vec3<f32>) -> vec3<f32> {
     let k = vec4<f32>(0.0, -1.0/3.0, 2.0/3.0, -1.0);
@@ -150,7 +151,9 @@ fn main([[builtin(position)]] pos: vec4<f32>) -> [[location(0)]] vec4<f32> {
     var curs = v2f(stuff.cursor_x/stuff.width, 1.0-stuff.cursor_y/stuff.height) - v2f(0.5) + offset;
     curs = v2f(curs.x*stuff.width/side, curs.y*stuff.height/side)*scale;
 
-    var col = mandlebrot(pos.x, pos.y, curs.x, curs.y);
+    // var col = mandlebrot(pos.x, pos.y, curs.x, curs.y);
+    var col = compute_buffer.buff[u32(pos.x + pos.y*1080.0)];
+    var col = v3f(f32(col));
     return vec4<f32>(sign(col)*col*col, 1.0); // gamma correction ruines stuff
     // return vec4<f32>(stuff.time, 0.33, 0.33, 1.0);
 }

@@ -10,6 +10,7 @@ use winit::{
 };
 use std::sync::mpsc::channel;
 
+const SIZEE: u64 = 1080*1920;
 struct State {
     surface: wgpu::Surface,
     device: wgpu::Device,
@@ -18,17 +19,20 @@ struct State {
     size: winit::dpi::PhysicalSize<u32>,
 
     render_pipeline: Option<wgpu::RenderPipeline>,
+    compute_pipeline: Option<wgpu::ComputePipeline>,
+    work_group_count: u32,
     vertex_buffer: wgpu::Buffer,
     num_vertices: u32,
-
+    
     importer: shader_importer::Importer,
     compile_status: bool,
     shader_code: Option<String>,
-
+    
     stuff: Stuff,
+    compute_buffer: wgpu::Buffer, // general buffer to play with
     stuff_buffer: wgpu::Buffer,
-    stuff_bind_group_layout: wgpu::BindGroupLayout,
-    stuff_bind_group: wgpu::BindGroup,
+    bind_group_layouts: wgpu::BindGroupLayout,
+    bind_group: wgpu::BindGroup,
     time: std::time::Instant,
 }
 
@@ -65,6 +69,12 @@ impl State {
         };
         surface.configure(&device, &config);
 
+        let compute_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some(&format!("Compute Buffer")),
+            contents: bytemuck::cast_slice(&vec![0u32 ; SIZEE as usize]),
+            usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
+        });
+
         let stuff = Stuff::new();
         let stuff_buffer = device.create_buffer_init(
             &wgpu::util::BufferInitDescriptor {
@@ -73,29 +83,44 @@ impl State {
                 usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
             }
         );
-        let stuff_bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("stuff bind group layout"),
+
+        let bind_group_layouts = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("bind group layouts"),
             entries: &[
                 wgpu::BindGroupLayoutEntry {
                     binding: 0,
-                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    visibility: wgpu::ShaderStages::FRAGMENT | wgpu::ShaderStages::COMPUTE,
                     ty: wgpu::BindingType::Buffer {
                         ty: wgpu::BufferBindingType::Uniform,
                         has_dynamic_offset: false,
                         min_binding_size: None,
                     },
                     count: None,
-                }
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 1,
+                    visibility: wgpu::ShaderStages::COMPUTE | wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: false },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,//wgpu::BufferSize::new(SIZEE*4),
+                    },
+                    count: None,
+                },
             ],
         });
-        let stuff_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+        let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("stuff bind group"),
-            layout: &stuff_bind_group_layout,
+            layout: &bind_group_layouts,
             entries: &[
                 wgpu::BindGroupEntry {
                     binding: 0,
                     resource: stuff_buffer.as_entire_binding(),
-                }
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: compute_buffer.as_entire_binding(),
+                },
             ],
         });
 
@@ -107,10 +132,11 @@ impl State {
             }
         );
         let num_vertices = VERTICES.len() as u32;
+
         let mut state = Self { 
-            surface, device, queue, config, size, render_pipeline: None, 
+            surface, device, queue, config, size, render_pipeline: None, compute_pipeline: None, work_group_count: 200,
             vertex_buffer, num_vertices, 
-            stuff, stuff_buffer, stuff_bind_group_layout, stuff_bind_group,
+            stuff, stuff_buffer, compute_buffer, bind_group_layouts, bind_group,
             importer: shader_importer::Importer::new("./src/shader.wgsl"),
             compile_status: false,
             shader_code: None,
@@ -129,6 +155,9 @@ impl State {
             [[stage(fragment)]]
             fn main([[builtin(position)]] pos: vec4<f32>) -> [[location(0)]] vec4<f32> {
                 return vec4<f32>(1.0);
+            }
+            [[stage(compute), workgroup_size(64)]]
+            fn main([[builtin(global_invocation_id)]] global_invocation_id: vec3<u32>) {
             }
         ")
     }
@@ -196,6 +225,11 @@ impl State {
         if !self.compile_status && self.shader_code == shader_code {return}
         self.shader_code = shader_code;
 
+        self.compile_render_shaders();
+        self.compile_compute_shaders();
+    }
+
+    fn compile_render_shaders(&mut self) {
         let (tx, rx) = channel::<wgpu::Error>();
         self.device.on_uncaptured_error(move |e: wgpu::Error| {
             tx.send(e).expect("sending error failed");
@@ -207,7 +241,7 @@ impl State {
         let render_pipeline_layout = self.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("Render Pipeline Layout"),
             bind_group_layouts: &[
-                &self.stuff_bind_group_layout,
+                &self.bind_group_layouts,
             ],
             push_constant_ranges: &[],
         });
@@ -253,9 +287,42 @@ impl State {
             println!("{}", err);
             return;
         }
-        dbg!("shader compiled");
+        dbg!("render shaders compiled");
         self.compile_status = true;
         self.render_pipeline = Some(render_pipeline);
+    }
+
+    fn compile_compute_shaders(&mut self) {
+        let (tx, rx) = channel::<wgpu::Error>();
+        self.device.on_uncaptured_error(move |e: wgpu::Error| {
+            tx.send(e).expect("sending error failed");
+        });
+        let shader = self.device.create_shader_module(&wgpu::ShaderModuleDescriptor {
+            label: Some("Shader"),
+            source: wgpu::ShaderSource::Wgsl(std::borrow::Cow::Borrowed(self.shader_code.as_ref().unwrap())),
+        });
+        let compute_pipeline_layout = self.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+            label: Some("Compute Pipeline Layout"),
+            bind_group_layouts: &[
+                &self.bind_group_layouts,
+            ],
+            push_constant_ranges: &[],
+        });
+        let compute_pipeline = self.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+            label: Some("Compute Pipeline"),
+            layout: Some(&compute_pipeline_layout),
+            module: &shader,
+            entry_point: "main",
+        });
+
+        if let Ok(err) = rx.try_recv() {
+            self.compile_status = false;
+            println!("{}", err);
+            return;
+        }
+        dbg!("compute shaders compiled");
+        self.compile_status = true;
+        self.compute_pipeline = Some(compute_pipeline);
     }
 
     fn render(&mut self) -> Result<(), wgpu::SurfaceError> {
@@ -264,6 +331,14 @@ impl State {
         let mut encoder = self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
             label: Some("Render Encoder"),
         });
+
+        {
+            let mut compute_pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor { label: None });
+            compute_pass.set_pipeline(self.compute_pipeline.as_ref().unwrap());
+            compute_pass.set_bind_group(0, &self.bind_group, &[]);
+            compute_pass.dispatch(self.work_group_count, 1, 1);
+        }
+
         {
             let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("Render Pass"),
@@ -285,7 +360,7 @@ impl State {
 
             render_pass.set_pipeline(self.render_pipeline.as_ref().unwrap());
             render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
-            render_pass.set_bind_group(0, &self.stuff_bind_group, &[]);
+            render_pass.set_bind_group(0, &self.bind_group, &[]);
             render_pass.draw(0..self.num_vertices, 0..1);
         }
     
