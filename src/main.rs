@@ -16,19 +16,19 @@ struct State {
     queue: wgpu::Queue,
     config: wgpu::SurfaceConfiguration,
     size: winit::dpi::PhysicalSize<u32>,
+
     render_pipeline: Option<wgpu::RenderPipeline>,
     vertex_buffer: wgpu::Buffer,
     num_vertices: u32,
-
-    stuff: Stuff,
-    stuff_buffer: wgpu::Buffer,
-    stuff_bind_group_layout: wgpu::BindGroupLayout,
-    stuff_bind_group: wgpu::BindGroup,
 
     importer: shader_importer::Importer,
     compile_status: bool,
     shader_code: Option<String>,
 
+    stuff: Stuff,
+    stuff_buffer: wgpu::Buffer,
+    stuff_bind_group_layout: wgpu::BindGroupLayout,
+    stuff_bind_group: wgpu::BindGroup,
     time: std::time::Instant,
 }
 
@@ -150,7 +150,26 @@ impl State {
             WindowEvent::CursorMoved { position, .. } => {
                 self.stuff.cursor_x = position.x as f32;
                 self.stuff.cursor_y = position.y as f32;
-            }
+            },
+            WindowEvent::MouseInput {button, state, ..} => {
+                let p_or_r = match state {
+                    winit::event::ElementState::Pressed => 1,
+                    winit::event::ElementState::Released => 0,
+                };
+                match button {
+                    winit::event::MouseButton::Left => self.stuff.mouse_left = p_or_r,
+                    winit::event::MouseButton::Right => self.stuff.mouse_right = p_or_r,
+                    winit::event::MouseButton::Middle => self.stuff.mouse_middle = p_or_r,
+                    _ => (),
+                }
+            },
+            WindowEvent::MouseWheel {delta, ..} => {
+                match delta {
+                    // winit::event::MouseScrollDelta::PixelDelta(pp) => self.stuff.scroll += (pp.y+pp.x) as f32,
+                    winit::event::MouseScrollDelta::LineDelta(x, y) => self.stuff.scroll += (x+y) as f32,
+                    _ => (),
+                }
+            },
             _ => return false,
         };
         true
@@ -375,6 +394,13 @@ struct Stuff {
     time: f32,
     cursor_x: f32,
     cursor_y: f32,
+    scroll: f32,
+
+    // TODO: figure out how to send bool or compress this into a single variable
+      // can shove inside a u32 and do (variable & u32(<2^n>)) to get it out
+    mouse_left: u32,
+    mouse_right: u32,
+    mouse_middle: u32,
 }
 
 impl Stuff {
@@ -385,6 +411,11 @@ impl Stuff {
             time: 0.0,
             cursor_x: 0.0,
             cursor_y: 0.0,
+
+            mouse_left: 0,
+            mouse_right: 0,
+            mouse_middle: 0,
+            scroll: 0.0,
         }
     }
 }

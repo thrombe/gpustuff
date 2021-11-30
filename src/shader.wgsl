@@ -7,6 +7,11 @@ struct Stuff {
     time: f32;
     cursor_x: f32;
     cursor_y: f32;
+
+    scroll: f32;
+    mouse_left: u32;
+    mouse_right: u32;
+    mouse_middle: u32;
 };
 [[group(0), binding(0)]]
 var<uniform> stuff: Stuff;
@@ -117,7 +122,8 @@ fn mandlebrot(x: f32, y: f32, curx: f32, cury: f32) -> v3f {
 
     var col = v3f(iter/100.0)*1.0;
     // col = col + 1.0-clamp(4.0*dot_at_mouse_position(cx, cy, curx, cury), v3f(0.0), v3f(1.0));
-    col = col*2.0 + 1.0 - 4.0*dot_at_mouse_position(cx, cy, curx, cury);
+    // col = col*2.0 + 1.0 - 4.0*dot_at_mouse_position(cx, cy, curx, cury);
+    if (stuff.mouse_left == u32(1)) {col = col*2.0 + 1.0 - 4.0*dot_at_mouse_position(cx, cy, curx, cury);}
 
     // return v3f(length(v3f(x, y, 0.0)));
     return col;

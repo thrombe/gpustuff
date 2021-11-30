@@ -16,10 +16,6 @@ plan:
   . press button to pause time
   . handle errors properly
     . provide a simple shader if shaders dont compile as soon as the program starts
-  . cursor
-    /. dot seems to lag quite a bit behind cursor
-    /. maybe cuz its fifo + alotta frames
-      /. fixed with changing fifo to immediate
 
 gol:
   . figure out how to retain last frame
