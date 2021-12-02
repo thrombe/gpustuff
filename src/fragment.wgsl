@@ -17,31 +17,60 @@ fn hsb2rgb(hsb: vec3<f32>) -> vec3<f32> {
     return hsb.z * mix(vec3<f32>(1.0), rgb, hsb.y); // ?????
 }
 
+fn triangle_function_helper(p: v2f, a: v2f, b: v2f) -> f32 {
+    return sqrt(pow(p.x-a.x, 2.0)+pow(p.y-a.y, 2.0))
+         + sqrt(pow(p.x-b.x, 2.0)+pow(p.y-b.y, 2.0))
+         - sqrt(pow(b.x-a.x, 2.0)+pow(b.y-a.y, 2.0));
+}
+fn triangle_function(x: f32, y: f32) -> v3f {
+    let e = 5.0;
+    var p = v2f(x, y);
+    var a = v2f(e, e);
+    var b = v2f(-e, e);
+    var c = v2f(0.0, -e);
+    var f = triangle_function_helper(p, a, b)
+          * triangle_function_helper(p, b, c)
+          * triangle_function_helper(p, c, a)
+          * 10.0;
+    let color = vec3<f32>(3.0, 1.0, 1.6);
+    return vec3<f32>(f) * color;
+}
 
 fn plotquations(x: f32, y: f32) -> vec3<f32> {
-    var time = stuff.time *0.000001;
+    var time = stuff.time *0.000004;
     // time = sin(time);
 
-    // var f = cos(x*x+y*y + time) - x*y/4.0;
+    var f = cos(x*x+y*y + time) - x*y/4.0;
     // var f = sin(exp(x)) - y;
+
+    f = abs(f);
+    // f = fract(f);
+    // f = floor(f);
+    // f = pow(f, 0.13);
+    // f = pow(f, 5.13);
+    f = pow(1.0-f, 2.13);
+    // f = pow(abs(0.8 - f), 8.0);
+    // f = pow(abs(0.6-f), 2.0);
+    // f = abs(0.4-f);
+    // f = step(f, 0.2);
+    let color = vec3<f32>(3.0, 1.0, 1.6);
+    return vec3<f32>(f) * color;
+}
+fn metaballs(x: f32, y:f32, cx: f32, cy: f32) -> v3f {
+    var time = stuff.time *0.0000004;
     let p = (sin(time*3.0))*5.2;
     var f = 1.0/sqrt((x-p)*(x-p) + y*y) 
           + 1.0/sqrt((x+p)*(x+p) + y*y)
           + 1.0/sqrt((y-p)*(y-p) + x*x)
           + 1.0/sqrt((y+p)*(y+p) + x*x);
-
-    // f = abs(f);
-    // f = fract(f);
-    // f = floor(f);
-    // f = pow(f, 0.13);
-    f = pow(f, 5.13);
-    f = pow(abs(0.8 - f), 4.0);
-    f = pow(abs(0.6-f), 2.0);
+    f =  f + .7/sqrt((x-cx)*(x-cx) + (y-cy)*(y-cy)); // metaball at cursor
+    f = abs(f);
+    f = pow(f, 5.5);
+    f = pow(abs(0.5-f), 2.0);
     f = abs(0.4-f);
     let color = vec3<f32>(3.0, 1.0, 1.6);
     return vec3<f32>(f) * color;
 }
-
 fn square(x: f32, y: f32) -> vec3<f32> {
     let side = 4.2;
     return vec3<f32>(step(abs(x), side)*step(abs(y), 0.8*side));
@@ -127,7 +156,11 @@ fn main([[builtin(position)]] pos: vec4<f32>) -> [[location(0)]] vec4<f32> {
     var curs = v2f(stuff.cursor_x/stuff.width, 1.0-stuff.cursor_y/stuff.height) - v2f(0.5) + offset;
     curs = v2f(curs.x*stuff.width/side, curs.y*stuff.height/side)*scale;
 
-    var col = mandlebrot(pos.x, pos.y, curs.x, curs.y);
+    var col = metaballs(pos.x, pos.y, curs.x, curs.y);
     return vec4<f32>(sign(col)*col*col, 1.0); // gamma correction ruines stuff
     // return vec4<f32>(stuff.time, 0.33, 0.33, 1.0);
 }
+
+// TODO: this should not be needed
+[[stage(compute), workgroup_size(64)]]
+fn main([[builtin(global_invocation_id)]] global_invocation_id: vec3<u32>) {}

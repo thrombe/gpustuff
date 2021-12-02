@@ -6,7 +6,7 @@ resources:
 custom commands:
   . /// import ./shader_path
     . keep track of what files included and dont import files multiple times
-  . /// compute_enabled
+  . /// compute_enable
     . dont do compute pass if this isnt found
   . /// work_group_count 64
 

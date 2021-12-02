@@ -4,7 +4,6 @@ use std::collections::HashMap;
 pub struct Importer {
     main_path: String,
     all_imports: HashMap<String, u64>, // includes main / hashmap allows to not care about checking if a path is already there
-    // last_mod_time: u64, // the most recent timestamp of all the imported files
 }
 
 impl Importer {
