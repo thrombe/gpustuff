@@ -17,27 +17,33 @@ fn hsb2rgb(hsb: vec3<f32>) -> vec3<f32> {
     return hsb.z * mix(vec3<f32>(1.0), rgb, hsb.y); // ?????
 }
 
-fn triangle_function_helper(p: v2f, a: v2f, b: v2f) -> f32 {
-    return sqrt(pow(p.x-a.x, 2.0)+pow(p.y-a.y, 2.0))
-         + sqrt(pow(p.x-b.x, 2.0)+pow(p.y-b.y, 2.0))
-         - sqrt(pow(b.x-a.x, 2.0)+pow(b.y-a.y, 2.0));
+fn line_segment(p: v2f, a: v2f, b: v2f) -> f32 {
+    return pow(pow(p.x-a.x, 2.0)+pow(p.y-a.y, 2.0), 0.5)
+         + pow(pow(p.x-b.x, 2.0)+pow(p.y-b.y, 2.0), 0.5)
+         - pow(pow(b.x-a.x, 2.0)+pow(b.y-a.y, 2.0), 0.5);
 }
-fn triangle_function(x: f32, y: f32) -> v3f {
-    let e = 5.0;
+fn triangle_function(x: f32, y: f32, cx: f32, cy: f32) -> v3f {
+    let e = 5.0;//  + sin(stuff.time*5.0) + cos(stuff.time*1.0);
     var p = v2f(x, y);
     var a = v2f(e, e);
     var b = v2f(-e, e);
     var c = v2f(0.0, -e);
-    var f = triangle_function_helper(p, a, b)
-          * triangle_function_helper(p, b, c)
-          * triangle_function_helper(p, c, a)
+    // var c = v2f(-e, -e);
+    // var d = v2f(e, -e);
+    var f = line_segment(p, a, b) // you can draw pretty much anything made out of line segments
+          * line_segment(p, b, c)
+          * line_segment(p, c, a)
+        //   * line_segment(p, c, d)
+        //   * line_segment(p, d, a)
           * 10.0;
+    f = 1.0-f;
+    // f = smoothStep(-9.0, 0.0, f);
     let color = vec3<f32>(3.0, 1.0, 1.6);
     return vec3<f32>(f) * color;
 }
 
 fn plotquations(x: f32, y: f32) -> vec3<f32> {
-    var time = stuff.time *0.000004;
+    var time = stuff.time *10.0;
     // time = sin(time);
 
     var f = cos(x*x+y*y + time) - x*y/4.0;
@@ -57,7 +63,7 @@ fn plotquations(x: f32, y: f32) -> vec3<f32> {
     return vec3<f32>(f) * color;
 }
 fn metaballs(x: f32, y:f32, cx: f32, cy: f32) -> v3f {
-    var time = stuff.time *0.0000004;
+    var time = stuff.time *0.1;
     let p = (sin(time*3.0))*5.2;
     var f = 1.0/sqrt((x-p)*(x-p) + y*y) 
           + 1.0/sqrt((x+p)*(x+p) + y*y)
@@ -89,7 +95,7 @@ fn circle(x: f32, y: f32) -> vec3<f32> {
 fn polar_function(x: f32, y: f32) -> vec3<f32> {
     var l = length(v2f(x, y));
     var theta = atan2(y, x);
-    var r = 2.0 + 4.0*sin(sin(stuff.time*0.0000005)*20.0*theta + stuff.time*0.00001);
+    var r = 2.0 + 4.0*sin(sin(stuff.time*0.4)*20.0*theta + stuff.time*20.);
     var f = smoothStep(0.0, 0.3, -l+r);
     return v3f(f);
 }
@@ -97,7 +103,7 @@ fn regular_polygon(x: f32, y: f32) -> vec3<f32> {
     var l = length(v2f(x, y));
     var theta = atan2(y, x);
     var sides = 5.0;
-    sides = sin(stuff.time*0.0000005)*10.0;
+    sides = sin(stuff.time*0.4)*10.0;
     var a = 2.0*PI/sides;
     var f = cos(floor(0.5 + theta/a)*a - theta)*l;
     f = f*0.1;
@@ -157,6 +163,7 @@ fn main([[builtin(position)]] pos: vec4<f32>) -> [[location(0)]] vec4<f32> {
     curs = v2f(curs.x*stuff.width/side, curs.y*stuff.height/side)*scale;
 
     var col = metaballs(pos.x, pos.y, curs.x, curs.y);
+    // var col = plotquations(pos.x, pos.y);
     return vec4<f32>(sign(col)*col*col, 1.0); // gamma correction ruines stuff
     // return vec4<f32>(stuff.time, 0.33, 0.33, 1.0);
 }

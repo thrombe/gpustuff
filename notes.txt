@@ -10,6 +10,8 @@ custom commands:
     . dont do compute pass if this isnt found
   . /// work_group_count 64
 
+bugs:
+  . 
 
 plan:
   . show red/white screen if shader dont compile

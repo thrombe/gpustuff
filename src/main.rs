@@ -207,7 +207,7 @@ impl State {
     }
 
     fn update(&mut self) {
-        self.stuff.time += self.time.elapsed().as_secs_f32();
+        self.stuff.time = self.time.elapsed().as_secs_f32();
 
         self.queue.write_buffer(&self.stuff_buffer, 0, bytemuck::cast_slice(&[self.stuff]));
         self.compile();
