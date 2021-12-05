@@ -10,9 +10,6 @@ use winit::{
 };
 use std::sync::mpsc::channel;
 
-const SIZEE: u64 = 1080*1920;
-const WORK_GROUP_SIZE: u64 = 64;
-
 struct State {
     surface: wgpu::Surface,
     device: wgpu::Device,
@@ -73,7 +70,7 @@ impl State {
 
         let compute_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some(&format!("Compute Buffer")),
-            contents: bytemuck::cast_slice(&vec![0u32 ; SIZEE as usize]),
+            contents: bytemuck::cast_slice(&vec![0u32 ; 1080*1920]),
             usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
         });
 
@@ -136,7 +133,7 @@ impl State {
         let num_vertices = VERTICES.len() as u32;
 
         let mut state = Self { 
-            surface, device, queue, config, size, render_pipeline: None, compute_pipeline: None, work_group_count: (SIZEE as f64/WORK_GROUP_SIZE as f64).ceil() as u32,
+            surface, device, queue, config, size, render_pipeline: None, compute_pipeline: None, work_group_count: 1,
             vertex_buffer, num_vertices, 
             stuff, stuff_buffer, compute_buffer, bind_group_layouts, bind_group,
             importer: shader_importer::Importer::new("./src/main.wgsl"),
@@ -158,7 +155,7 @@ impl State {
             fn main([[builtin(position)]] pos: vec4<f32>) -> [[location(0)]] vec4<f32> {
                 return vec4<f32>(1.0);
             }
-            [[stage(compute), workgroup_size(64)]]
+            [[stage(compute), workgroup_size(1)]]
             fn main([[builtin(global_invocation_id)]] global_invocation_id: vec3<u32>) {
             }
         ")
@@ -228,7 +225,18 @@ impl State {
         self.shader_code = shader_code;
 
         self.compile_render_shaders();
-        self.compile_compute_shaders();
+        if self.importer.compute | self.compute_pipeline.is_none() {
+            self.compile_compute_shaders();
+        }
+        
+        // update work_group_count if edited in shaders
+        if self.importer.work_group_count.is_some() {
+            let work_group_count = self.importer.work_group_count.unwrap();
+            if work_group_count != self.work_group_count{
+                dbg!(format!("work_group count changed from {} to {}", self.work_group_count, work_group_count));
+                self.work_group_count = work_group_count;
+            }
+        };
     }
 
     fn compile_render_shaders(&mut self) {
@@ -334,7 +342,7 @@ impl State {
             label: Some("Render Encoder"),
         });
 
-        {
+        if self.importer.compute {
             let mut compute_pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor { label: None });
             compute_pass.set_pipeline(self.compute_pipeline.as_ref().unwrap());
             compute_pass.set_bind_group(0, &self.bind_group, &[]);

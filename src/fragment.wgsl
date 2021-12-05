@@ -23,11 +23,13 @@ fn line_segment(p: v2f, a: v2f, b: v2f) -> f32 {
          - pow(pow(b.x-a.x, 2.0)+pow(b.y-a.y, 2.0), 0.5);
 }
 fn triangle_function(x: f32, y: f32, cx: f32, cy: f32) -> v3f {
-    let e = 5.0;//  + sin(stuff.time*5.0) + cos(stuff.time*1.0);
+    var e = 5.0;
+    e = e + sin(stuff.time*5.0) + cos(stuff.time*1.0);
     var p = v2f(x, y);
     var a = v2f(e, e);
     var b = v2f(-e, e);
     var c = v2f(0.0, -e);
+    // var c = v2f(cx, cy);
     // var c = v2f(-e, -e);
     // var d = v2f(e, -e);
     var f = line_segment(p, a, b) // you can draw pretty much anything made out of line segments
@@ -37,7 +39,7 @@ fn triangle_function(x: f32, y: f32, cx: f32, cy: f32) -> v3f {
         //   * line_segment(p, d, a)
           * 10.0;
     f = 1.0-f;
-    // f = smoothStep(-9.0, 0.0, f);
+    f = smoothStep(-9.0, 0.0, f);
     let color = vec3<f32>(3.0, 1.0, 1.6);
     return vec3<f32>(f) * color;
 }
@@ -162,12 +164,8 @@ fn main([[builtin(position)]] pos: vec4<f32>) -> [[location(0)]] vec4<f32> {
     var curs = v2f(stuff.cursor_x/stuff.width, 1.0-stuff.cursor_y/stuff.height) - v2f(0.5) + offset;
     curs = v2f(curs.x*stuff.width/side, curs.y*stuff.height/side)*scale;
 
-    var col = metaballs(pos.x, pos.y, curs.x, curs.y);
+    var col = triangle_function(pos.x, pos.y, curs.x, curs.y);
     // var col = plotquations(pos.x, pos.y);
     return vec4<f32>(sign(col)*col*col, 1.0); // gamma correction ruines stuff
     // return vec4<f32>(stuff.time, 0.33, 0.33, 1.0);
 }
-
-// TODO: this should not be needed
-[[stage(compute), workgroup_size(64)]]
-fn main([[builtin(global_invocation_id)]] global_invocation_id: vec3<u32>) {}

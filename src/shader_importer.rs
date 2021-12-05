@@ -2,6 +2,8 @@ use std::collections::HashMap;
 
 
 pub struct Importer {
+    pub compute: bool,
+    pub work_group_count: Option<u32>,
     main_path: String,
     all_imports: HashMap<String, u64>, // includes main / hashmap allows to not care about checking if a path is already there
 }
@@ -11,6 +13,8 @@ impl Importer {
         let mut hm = HashMap::new();
         hm.insert(path.to_string(), 0);
         Self {
+            compute: false,
+            work_group_count: None,
             main_path: path.to_string(),
             all_imports: hm,
         }
@@ -55,15 +59,7 @@ impl Importer {
                 "import" => {
                     let path = words[2];
                     if !self.all_imports.contains_key(path) {                        
-                        let new_time = {
-                            match std::fs::metadata(path) {
-                                Ok(s) => s.modified().unwrap()
-                                    .duration_since(std::time::SystemTime::UNIX_EPOCH).unwrap(),
-                                Err(_) => return None,
-                            }
-                        };
-                        let new_time = new_time.as_secs() as u64 + new_time.subsec_nanos() as u64;
-                        self.all_imports.insert(path.to_string(), new_time);
+                        if self.update_file_metadata(path).is_none() {return None}
                     }
                 },
                 _ => (),
@@ -72,29 +68,52 @@ impl Importer {
         Some(())
     }
 
-    pub fn import(&self) -> Option<String> {
-        Some(import_to_string(&self.main_path))
+    fn update_file_metadata(&mut self, path: &str) -> Option<()> {
+        let new_time = {
+            match std::fs::metadata(path) {
+                Ok(s) => s.modified().unwrap()
+                    .duration_since(std::time::SystemTime::UNIX_EPOCH).unwrap(),
+                Err(_) => return None,
+            }
+        };
+        let new_time = new_time.as_secs() as u64 + new_time.subsec_nanos() as u64;
+        self.all_imports.insert(path.to_string(), new_time);
+        Some(())
     }
-}
 
-pub fn import_to_string(path: &str) -> String {
-    let mut shader = "".to_string();
-    let main_mod = std::fs::read_to_string(path).unwrap();
-    for line in main_mod.lines() {
-        if !line.starts_with("/// ") {
-            shader.push_str(line);
-            shader.push_str("\n");
-            continue;
-        }
-        let words = line.split_whitespace().collect::<Vec<&str>>();
-        match *words.get(1).unwrap_or(&"") {
-            "import" => { // importing code from other shaders as if it was written in the same file
-                let sub_mod = import_to_string(words[2]);
-                shader.push_str(&sub_mod);
-                shader.push_str("\n");
-            },
-            _ => (),
-        }
+    pub fn import(&mut self) -> Option<String> {
+        self.compute = false;
+        Some(self.import_file(&self.main_path.clone()))
     }
-    shader
+
+    fn import_file(&mut self, path: &str) -> String {
+        //update the stored metadata
+        self.update_file_metadata(path);
+
+        let mut shader = "".to_string();
+        let main_mod = std::fs::read_to_string(path).unwrap();
+        for line in main_mod.lines() {
+            if !line.starts_with("/// ") {
+                shader.push_str(line);
+                shader.push_str("\n");
+                continue;
+            }
+            let words = line.split_whitespace().collect::<Vec<&str>>();
+            match *words.get(1).unwrap_or(&"") {
+                "import" => { // importing code from other shaders as if it was written in the same file
+                    let sub_mod = self.import_file(words[2]);
+                    shader.push_str(&sub_mod);
+                    shader.push_str("\n");
+                },
+                "compute_enable" => {
+                    self.compute = true;
+                },
+                "work_group_count" => {
+                    self.work_group_count = words.get(2).unwrap_or(&"").parse().ok();
+                }
+                _ => (),
+            }
+        }
+        shader    
+    }
 }

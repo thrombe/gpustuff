@@ -1,4 +1,6 @@
 
+// 1080*1920/64 = 32400
+/// work_group_count 32400
 /// compute_enable
 
 [[stage(compute), workgroup_size(64)]] // workgroup_size can take 3 arguments -> x*y*z executions (default x, 1, 1) // minimum opengl requirements are (1024, 1024, 64) but (x*y*z < 1024 (not too sure)) no info about wgsl rn

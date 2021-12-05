@@ -33,4 +33,4 @@ var<storage, read_write> compute_buffer: Buffer;
 
 /// import ./src/vertex.wgsl
 /// import ./src/fragment.wgsl
-//  import ./src/compute.wgsl
+// / import ./src/compute.wgsl
