@@ -64,6 +64,7 @@ impl State {
             format: surface.get_preferred_format(&adapter).unwrap(),
             width: size.width,
             height: size.height,
+            // present_mode: wgpu::PresentMode::Fifo,
             present_mode: wgpu::PresentMode::Immediate,
         };
         surface.configure(&device, &config);
@@ -391,7 +392,7 @@ fn main() {
     let mut state = pollster::block_on(State::new(&window));
 
     event_loop.run(move |event, _, control_flow| {
-        match event {
+        match event { // https://docs.rs/winit/0.25.0/winit/event/enum.WindowEvent.html
             Event::WindowEvent {
                 ref event,
                 window_id,
@@ -460,6 +461,7 @@ impl Vertex {
     }
 }
 
+// 2 triangles to fill the entire screen
 const VERTICES: &[Vertex] = &[
     Vertex { position: [1.0, 1.0, 0.0] },
     Vertex { position: [-1.0, 1.0, 0.0] },

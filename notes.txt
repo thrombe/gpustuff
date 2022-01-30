@@ -13,6 +13,9 @@ bugs:
   . 
 
 plan:
+  . try hybrid + gpustuff
+  . try gpustuff without displaying (i.e only compute, not fragment/window)
+  . check the rust-cuda ray-tracer for how it does things
   . show red/white screen if shader dont compile
   . dont crash if shader dont compile initially
   . send mouse coords in shader so that it can be used for fun things

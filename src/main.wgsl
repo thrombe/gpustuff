@@ -16,6 +16,7 @@ struct Stuff {
 var<uniform> stuff: Stuff;
 
 let PI = 3.14159265359;
+let PHI = 1.61803398874989484820459;
 type v2f = vec2<f32>;
 type v3f = vec3<f32>;
 type v4f = vec4<f32>;
@@ -30,6 +31,7 @@ struct Buffer {
 [[group(0), binding(1)]]
 var<storage, read_write> compute_buffer: Buffer;
 
+// / import ./src/rng.wgsl
 
 /// import ./src/vertex.wgsl
 /// import ./src/fragment.wgsl

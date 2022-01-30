@@ -116,15 +116,15 @@ fn dot_at_mouse_position(x: f32, y: f32, cx: f32, cy: f32) -> vec3<f32> {
     return v3f(length(v2f(x-cx, y-cy)));
 }
 fn mandlebrot(x: f32, y: f32, curx: f32, cury: f32) -> v3f {
-    var x = x*0.2;
-    let curx = curx*0.2;
+    var x = x*0.2 - 0.5;
+    let curx = curx*0.2 - 0.5;
     let cury = cury*0.2;
     var y = y*0.2;
     let cx = x;
     let cy = y;
 
     var iter = 0.0;
-    for (var i=0; i<500; i = i+1) {
+    for (var i=0; i<1000; i = i+1) {
         let ex = x;
         x = x*x-y*y + cx;
         y = 2.0*ex*y + cy;
@@ -152,7 +152,6 @@ fn main([[builtin(position)]] pos: vec4<f32>) -> [[location(0)]] vec4<f32> {
     // var side = 300.0; // static scale
 
 
-
     var pos = vec2<f32>(pos.x/stuff.width, pos.y/stuff.height); // get pos from 0 to 1
     pos.y = 1.0-pos.y; // inverting y axis to get it upright
     pos = pos - vec2<f32>(0.5, 0.5); // (0, 0) at centre of screen
@@ -164,8 +163,9 @@ fn main([[builtin(position)]] pos: vec4<f32>) -> [[location(0)]] vec4<f32> {
     var curs = v2f(stuff.cursor_x/stuff.width, 1.0-stuff.cursor_y/stuff.height) - v2f(0.5) + offset;
     curs = v2f(curs.x*stuff.width/side, curs.y*stuff.height/side)*scale;
 
-    var col = triangle_function(pos.x, pos.y, curs.x, curs.y);
+    // pos = floor(pos*1.0);
+
+    var col = metaballs(pos.x, pos.y, curs.x, curs.y);
     // var col = plotquations(pos.x, pos.y);
     return vec4<f32>(sign(col)*col*col, 1.0); // gamma correction ruines stuff
-    // return vec4<f32>(stuff.time, 0.33, 0.33, 1.0);
 }
