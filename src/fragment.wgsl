@@ -145,7 +145,7 @@ fn mandlebrot(x: f32, y: f32, curx: f32, cury: f32) -> v3f {
 
 
 [[stage(fragment)]]
-fn main([[builtin(position)]] pos: vec4<f32>) -> [[location(0)]] vec4<f32> {
+fn main_fragment([[builtin(position)]] pos: vec4<f32>) -> [[location(0)]] vec4<f32> {
     let offset = vec2<f32>(0.0, 0.0);
     var scale = 15.0;
     var side = min(stuff.width, stuff.height); // dynamic scaling

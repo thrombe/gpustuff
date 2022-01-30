@@ -1,5 +1,4 @@
 
-[[block]]
 struct Stuff {
     width: f32;
     height: f32;
@@ -22,7 +21,6 @@ type v3f = vec3<f32>;
 type v4f = vec4<f32>;
 
 
-[[block]]
 struct Buffer {
     // buff: [[stride(4)]] array<u32>; // stride is the length of the element in array in bytes
     // buff: array<u32>;

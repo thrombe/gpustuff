@@ -2,6 +2,7 @@
 resources:
   . https://www.khronos.org/opengl/wiki/Compute_Shader
   . https://www.w3.org/TR/WGSL/
+  . https://sotrh.github.io/learn-wgpu
 
 custom commands:
   . /// import ./shader_path

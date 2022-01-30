@@ -149,15 +149,15 @@ impl State {
     fn fallback_shader() -> String {
         String::from("
             [[stage(vertex)]]
-            fn main() -> [[builtin(position)]] vec4<f32> {
+            fn main_vertex() -> [[builtin(position)]] vec4<f32> {
                 return vec4<f32>(1.0);
             }
             [[stage(fragment)]]
-            fn main([[builtin(position)]] pos: vec4<f32>) -> [[location(0)]] vec4<f32> {
+            fn main_fragment([[builtin(position)]] pos: vec4<f32>) -> [[location(0)]] vec4<f32> {
                 return vec4<f32>(1.0);
             }
             [[stage(compute), workgroup_size(1)]]
-            fn main([[builtin(global_invocation_id)]] global_invocation_id: vec3<u32>) {
+            fn main_compute([[builtin(global_invocation_id)]] global_invocation_id: vec3<u32>) {
             }
         ")
     }
@@ -261,12 +261,12 @@ impl State {
             layout: Some(&render_pipeline_layout),
             vertex: wgpu::VertexState {
                 module: &shader,
-                entry_point: "main", // 1.
+                entry_point: "main_vertex", // 1.
                 buffers: &[Vertex::desc()], // 2.
             },
             fragment: Some(wgpu::FragmentState { // 3.
                 module: &shader,
-                entry_point: "main",
+                entry_point: "main_fragment",
                 targets: &[wgpu::ColorTargetState { // 4.
                     format: self.config.format,
                     blend: Some(wgpu::BlendState::REPLACE),
@@ -280,10 +280,9 @@ impl State {
                 cull_mode: Some(wgpu::Face::Back),
                 // Setting this to anything other than Fill requires Features::NON_FILL_POLYGON_MODE
                 polygon_mode: wgpu::PolygonMode::Fill,
-                // Requires Features::DEPTH_CLAMPING
-                clamp_depth: false,
                 // Requires Features::CONSERVATIVE_RASTERIZATION
                 conservative: false,
+                unclipped_depth: false,
             },
             depth_stencil: None, // 1.
             multisample: wgpu::MultisampleState {
@@ -291,6 +290,7 @@ impl State {
                 mask: !0, // 3.
                 alpha_to_coverage_enabled: false, // 4.
             },
+            multiview: None,
         });
 
         if let Ok(err) = rx.try_recv() {
@@ -323,7 +323,7 @@ impl State {
             label: Some("Compute Pipeline"),
             layout: Some(&compute_pipeline_layout),
             module: &shader,
-            entry_point: "main",
+            entry_point: "main_compute",
         });
 
         if let Ok(err) = rx.try_recv() {
