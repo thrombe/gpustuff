@@ -1,10 +1,8 @@
 #![allow(dead_code)]
 
 mod shader_importer;
-mod windowed_run;
-mod windowless_run;
+mod run;
 
 fn main() {
-    // windowed_run::main();
-    windowless_run::main();
+    run::main();
 }
