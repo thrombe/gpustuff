@@ -61,6 +61,18 @@ fn gold_noise(x: f32, y: f32) -> v3f {
     return v3f(fract(tan(distance(xy*PHI, xy)*seed)*xy.x));
 }
 
+// Hash function www.cs.ubc.ca/~rbridson/docs/schechter-sca08-turbulence.pdf
+// fn hash(state: u32) -> u32 {
+//     var state = state;
+//     state = state^2747636419u;
+//     state = state*2654435769u;
+//     state = state^(state >> 16);
+//     state = state*2654435769u;
+//     state = state^(state >> 16);
+//     state = state*2654435769u;
+//     return state;
+// }
+
 // fn hash_rng(x: f32, y: f32) -> f32 {
 //     let k = 1103515245;
 //     let ex = 
