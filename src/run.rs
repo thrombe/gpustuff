@@ -43,6 +43,7 @@ struct State {
     bind_group_layouts: wgpu::BindGroupLayout,
     bind_group: wgpu::BindGroup,
     time: std::time::Instant,
+    tick_time: f32,
 }
 
 impl State {
@@ -93,7 +94,7 @@ impl State {
             importer: shader_importer::Importer::new("./src/main.wgsl"),
             compile_status: false,
             shader_code: None,
-            time: std::time::Instant::now(),
+            time: std::time::Instant::now(), tick_time: 0.0,
             screen_texture: None, screen_texture_size: None, screen_texture_desc: None, screen_texture_view: None,
             screen_buffer1, screen_buffer2, my_turn: false,
         };
@@ -131,7 +132,7 @@ impl State {
             importer: shader_importer::Importer::new("./src/main.wgsl"),
             compile_status: false,
             shader_code: None,
-            time: std::time::Instant::now(),
+            time: std::time::Instant::now(), tick_time: 0.0,
             screen_texture: Some(texture), screen_texture_size: Some(texture_size), screen_texture_desc: Some(texture_desc), screen_texture_view: Some(texture_view),
             screen_buffer1, screen_buffer2, my_turn: false,
         };
@@ -335,30 +336,33 @@ impl State {
 
         self.queue.write_buffer(&self.stuff_buffer, 0, bytemuck::cast_slice(&[self.stuff]));
 
-        self.my_turn = !self.my_turn;
-        let bind_group = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("stuff bind group"),
-            layout: &self.bind_group_layouts,
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: self.stuff_buffer.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 1,
-                    resource: self.compute_buffer.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: if self.my_turn {2} else {3},
-                    resource: self.screen_buffer1.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: if self.my_turn {3} else {2},
-                    resource: self.screen_buffer2.as_entire_binding(),
-                },
-            ],
-        });
-        self.bind_group = bind_group;
+        if self.time.elapsed().as_secs_f32() - self.tick_time > 0.1 {
+            self.tick_time = self.time.elapsed().as_secs_f32();
+            self.my_turn = !self.my_turn;
+            let bind_group = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
+                label: Some("stuff bind group"),
+                layout: &self.bind_group_layouts,
+                entries: &[
+                    wgpu::BindGroupEntry {
+                        binding: 0,
+                        resource: self.stuff_buffer.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 1,
+                        resource: self.compute_buffer.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: if self.my_turn {2} else {3},
+                        resource: self.screen_buffer1.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: if self.my_turn {3} else {2},
+                        resource: self.screen_buffer2.as_entire_binding(),
+                    },
+                ],
+            });
+            self.bind_group = bind_group;
+        }
 
         self.compile();
     }
