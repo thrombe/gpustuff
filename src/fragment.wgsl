@@ -123,11 +123,17 @@ fn mandlebrot(x: f32, y: f32, curx: f32, cury: f32) -> v3f {
     let cx = x;
     let cy = y;
 
+    let p = 2.0;
+
     var iter = 0.0;
     for (var i=0; i<1000; i = i+1) {
-        let ex = x;
-        x = x*x-y*y + cx;
-        y = 2.0*ex*y + cy;
+        // convert to r*e^(i*theta)
+        let r = sqrt(x*x+y*y);
+        let t = atan2(y, x);
+
+        // raise to pth power and convert back to x + i*y
+        x = pow(r, p)*cos(p*t) + cx;
+        y = pow(r, p)*sin(p*t) + cy;
         if (x*x+y*y > 4.0) {
             iter = f32(i);
             break;
